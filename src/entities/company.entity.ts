@@ -18,6 +18,9 @@ export class Company {
   @Column({ nullable: true })
   teamSize: number;
 
+  @Column({ type: 'text', nullable: true })
+  contextCompany: string;
+
   @OneToMany(() => User, (user) => user.company)
   users: User[];
 

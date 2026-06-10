@@ -12,6 +12,7 @@ import { Company } from './entities/company.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Conversation } from './entities/conversation.entity';
 import { ConversationsModule } from './conversations/conversations.module';
+import { CompanyContextModule } from './company-context/company-context.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { ConversationsModule } from './conversations/conversations.module';
     UsersModule,
     SeederModule,
     ConversationsModule,
+    CompanyContextModule,
   ],
   controllers: [AppController],
   providers: [AppService],

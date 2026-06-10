@@ -22,6 +22,7 @@ export class UsersService {
       websiteURL: company.websiteURL,
       industry: company.industry,
       teamSize: company.teamSize,
+      contextCompany: company.contextCompany,
       createdAt: company.createdAt.toISOString(),
     };
   }
