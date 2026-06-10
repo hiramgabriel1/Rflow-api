@@ -4,5 +4,6 @@ export interface CompanyData {
   websiteURL: string | null;
   industry: string | null;
   teamSize: number | null;
+  contextCompany: string | null;
   createdAt: string;
 }
