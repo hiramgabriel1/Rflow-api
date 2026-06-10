@@ -20,8 +20,8 @@ export class User {
   @OneToMany(() => RefreshToken, (rt) => rt.user)
   refreshTokens: RefreshToken[];
 
-  @OneToOne(() => Conversation, (conversation) => conversation.user, { cascade: true })
-  conversation: Conversation;
+  @OneToMany(() => Conversation, (conversation) => conversation.user, { cascade: true })
+  conversations: Conversation[];
 
   @CreateDateColumn()
   createdAt: Date;

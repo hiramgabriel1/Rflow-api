@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToOne, CreateDateColumn, UpdateDateColumn, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 import { User } from './user.entity';
 
 @Entity()
@@ -6,11 +6,13 @@ export class Conversation {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @Column({ default: 'New Conversation' })
+  title: string;
+
   @Column('jsonb', { default: [] })
   messages: { role: string; content: string }[];
 
-  @OneToOne(() => User, (user) => user.conversation)
-  @JoinColumn()
+  @ManyToOne(() => User, (user) => user.conversations)
   user: User;
 
   @CreateDateColumn()

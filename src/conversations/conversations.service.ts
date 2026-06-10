@@ -23,33 +23,52 @@ export class ConversationsService {
     }
   }
 
-  async createConversation(userId: string) {
-    const user = await this.userRepo.findOne({
-      where: { id: userId },
-      relations: { conversation: true },
-    });
-
+  async createConversation(userId: string, title?: string) {
+    const user = await this.userRepo.findOne({ where: { id: userId } });
     if (!user) {
       throw new NotFoundException('User not found');
     }
 
-    if (user.conversation) {
-      return user.conversation;
-    }
-
-    const conversation = this.conversationRepo.create({ user });
+    const conversation = this.conversationRepo.create({
+      user,
+      title: title || 'New Conversation',
+    });
     await this.conversationRepo.save(conversation);
     return conversation;
   }
 
-  async sendMessage(userId: string, content: string) {
-    let conversation = await this.conversationRepo.findOne({
+  async getUserConversations(userId: string, page: number, limit: number) {
+    const [conversations, total] = await this.conversationRepo.findAndCount({
       where: { user: { id: userId } },
-      relations: { user: true },
+      order: { updatedAt: 'DESC' },
+      skip: (page - 1) * limit,
+      take: limit,
     });
+    return {
+      data: conversations,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
 
+  async getConversationById(conversationId: string, userId: string) {
+    const conversation = await this.conversationRepo.findOne({
+      where: { id: conversationId, user: { id: userId } },
+    });
     if (!conversation) {
-      conversation = await this.createConversation(userId);
+      throw new NotFoundException('Conversation not found');
+    }
+    return conversation;
+  }
+
+  async sendMessage(conversationId: string, content: string) {
+    const conversation = await this.conversationRepo.findOne({
+      where: { id: conversationId },
+    });
+    if (!conversation) {
+      throw new NotFoundException('Conversation not found');
     }
 
     conversation.messages.push({ role: 'user', content });
@@ -74,29 +93,16 @@ export class ConversationsService {
     };
   }
 
-  async getConversation(userId: string) {
-    const conversation = await this.conversationRepo.findOne({
-      where: { user: { id: userId } },
-    });
-
-    if (!conversation) {
-      return null;
-    }
-
-    return conversation;
-  }
-
-  async clearConversation(userId: string) {
-    const conversation = await this.conversationRepo.findOne({
-      where: { user: { id: userId } },
-    });
-
-    if (!conversation) {
-      throw new NotFoundException('Conversation not found');
-    }
-
+  async clearConversation(conversationId: string, userId: string) {
+    const conversation = await this.getConversationById(conversationId, userId);
     conversation.messages = [];
     await this.conversationRepo.save(conversation);
     return conversation;
+  }
+
+  async deleteConversation(conversationId: string, userId: string) {
+    const conversation = await this.getConversationById(conversationId, userId);
+    await this.conversationRepo.remove(conversation);
+    return { deleted: true, conversationId };
   }
 }
