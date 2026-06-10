@@ -11,6 +11,7 @@ import { User } from './entities/user.entity';
 import { Company } from './entities/company.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Conversation } from './entities/conversation.entity';
+import { CompetitorCompany } from './entities/competitor-company.entity';
 import { ConversationsModule } from './conversations/conversations.module';
 import { CompanyContextModule } from './company-context/company-context.module';
 
@@ -23,7 +24,7 @@ import { CompanyContextModule } from './company-context/company-context.module';
       username: process.env.DB_USER || 'rflow',
       password: process.env.DB_PASS || 'rflow_pass',
       database: process.env.DB_NAME || 'rflow_db',
-      entities: [User, Company, RefreshToken, Conversation],
+      entities: [User, Company, RefreshToken, Conversation, CompetitorCompany],
       synchronize: true,
     }),
     CacheModule.register({

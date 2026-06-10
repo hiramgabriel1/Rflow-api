@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { User } from './user.entity';
+import { CompetitorCompany } from './competitor-company.entity';
 
 @Entity()
 export class Company {
@@ -23,6 +24,9 @@ export class Company {
 
   @OneToMany(() => User, (user) => user.company)
   users: User[];
+
+  @OneToMany(() => CompetitorCompany, (competitor) => competitor.company, { cascade: true })
+  competitors: CompetitorCompany[];
 
   @CreateDateColumn()
   createdAt: Date;

@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Company } from '../entities/company.entity';
+import { CompetitorCompany } from '../entities/competitor-company.entity';
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import OpenAI from 'openai';
@@ -13,6 +14,8 @@ export class CompanyContextService {
   constructor(
     @InjectRepository(Company)
     private readonly companyRepo: Repository<Company>,
+    @InjectRepository(CompetitorCompany)
+    private readonly competitorRepo: Repository<CompetitorCompany>,
   ) {
     const apiKey = process.env.OPENAI_API_KEY;
     if (apiKey) {
@@ -49,6 +52,64 @@ export class CompanyContextService {
     return {
       message: 'Company context analyzed and saved successfully',
       contextCompany: context,
+    };
+  }
+
+  async analyzeCompetitor(userId: string, competitorUrl: string) {
+    const company = await this.companyRepo.findOne({
+      where: { users: { id: userId } },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Company not found for this user');
+    }
+
+    if (!competitorUrl) {
+      throw new BadRequestException('Competitor URL is required');
+    }
+
+    if (!company.contextCompany) {
+      throw new BadRequestException('You must analyze your company context first. Call /company-context/analyze with your company URL.');
+    }
+
+    const existing = await this.competitorRepo.findOne({
+      where: { company: { id: company.id }, url: competitorUrl },
+    });
+    if (existing) {
+      throw new BadRequestException('This competitor has already been analyzed');
+    }
+
+    const competitorContent = await this.scrapeWebsite(competitorUrl);
+    if (!competitorContent) {
+      throw new BadRequestException('Could not extract content from the competitor URL');
+    }
+
+    const competitorChunks = this.chunkContent(competitorContent);
+    const competitorAnalysis = await this.analyzeCompetitorContent(competitorChunks);
+
+    const comparison = await this.compareCompanies(company.contextCompany, competitorAnalysis, competitorUrl);
+
+    const competitorName = competitorUrl.replace(/https?:\/\//, '').split('/')[0];
+
+    const competitor = this.competitorRepo.create({
+      name: competitorName,
+      url: competitorUrl,
+      content: competitorContent.substring(0, 10000),
+      analysis: competitorAnalysis,
+      comparison,
+      company,
+    });
+    await this.competitorRepo.save(competitor);
+
+    return {
+      message: 'Competitor analysis completed',
+      competitor: {
+        id: competitor.id,
+        name: competitor.name,
+        url: competitor.url,
+        comparison: competitor.comparison,
+        createdAt: competitor.createdAt,
+      },
     };
   }
 
@@ -169,5 +230,160 @@ Provide a structured, concise summary that can be used as context for AI assista
     });
 
     return finalResponse.choices[0]?.message?.content || 'No analysis generated';
+  }
+
+  private async analyzeCompetitorContent(chunks: string[]): Promise<string> {
+    if (!this.openai) {
+      throw new Error('OPENAI_API_KEY is not configured');
+    }
+
+    const systemPrompt = `You are a business analyst AI. Analyze this competitor company website content and create a comprehensive summary.
+
+Focus on:
+1. Products/services offered
+2. Target market
+3. Value proposition
+4. Pricing strategy (if mentioned)
+5. Key differentiators
+6. Marketing approach
+7. Strengths and weaknesses observed
+
+Provide a structured summary.`;
+
+    const chunkAnalyses: string[] = [];
+
+    for (const chunk of chunks) {
+      const response = await this.openai.chat.completions.create({
+        model: 'gpt-4o-mini',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: `Analyze this competitor website content:\n\n${chunk}` },
+        ],
+        max_tokens: 500,
+      });
+
+      const analysis = response.choices[0]?.message?.content;
+      if (analysis) {
+        chunkAnalyses.push(analysis);
+      }
+    }
+
+    const combinedAnalyses = chunkAnalyses.join('\n\n---\n\n');
+
+    const finalResponse = await this.openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `Combine these competitor analyses into a unified summary:\n\n${combinedAnalyses}` },
+      ],
+      max_tokens: 1500,
+    });
+
+    return finalResponse.choices[0]?.message?.content || 'No analysis generated';
+  }
+
+  private async compareCompanies(myCompanyContext: string, competitorAnalysis: string, competitorUrl: string): Promise<string> {
+    if (!this.openai) {
+      throw new Error('OPENAI_API_KEY is not configured');
+    }
+
+    const systemPrompt = `You are a strategic business consultant AI. Compare my company against a competitor and provide actionable insights.
+
+Provide:
+1. **Strengths vs Competitor** - Where my company has advantages
+2. **Weaknesses vs Competitor** - Where the competitor is stronger
+3. **Opportunities** - Specific actions I should take to gain advantage
+4. **Threats** - What the competitor does that could hurt my business
+5. **Recommendations** - Concrete, prioritized action items
+
+Be specific, practical, and direct. Use examples from both companies.`;
+
+    const response = await this.openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        {
+          role: 'user',
+          content: `MY COMPANY CONTEXT:\n${myCompanyContext}\n\n---\n\nCOMPETITOR (${competitorUrl}):\n${competitorAnalysis}\n\n---\n\nNow compare both companies and give me a detailed competitive analysis with actionable recommendations.`,
+        },
+      ],
+      max_tokens: 2000,
+    });
+
+    return response.choices[0]?.message?.content || 'No comparison generated';
+  }
+
+  async getCompetitors(userId: string) {
+    const company = await this.companyRepo.findOne({
+      where: { users: { id: userId } },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Company not found for this user');
+    }
+
+    const competitors = await this.competitorRepo.find({
+      where: { company: { id: company.id } },
+      order: { createdAt: 'DESC' },
+    });
+
+    return competitors.map(c => ({
+      id: c.id,
+      name: c.name,
+      url: c.url,
+      comparison: c.comparison,
+      createdAt: c.createdAt,
+      updatedAt: c.updatedAt,
+    }));
+  }
+
+  async getCompetitorById(userId: string, competitorId: string) {
+    const company = await this.companyRepo.findOne({
+      where: { users: { id: userId } },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Company not found for this user');
+    }
+
+    const competitor = await this.competitorRepo.findOne({
+      where: { id: competitorId, company: { id: company.id } },
+    });
+
+    if (!competitor) {
+      throw new NotFoundException('Competitor not found');
+    }
+
+    return {
+      id: competitor.id,
+      name: competitor.name,
+      url: competitor.url,
+      content: competitor.content,
+      analysis: competitor.analysis,
+      comparison: competitor.comparison,
+      createdAt: competitor.createdAt,
+      updatedAt: competitor.updatedAt,
+    };
+  }
+
+  async deleteCompetitor(userId: string, competitorId: string) {
+    const company = await this.companyRepo.findOne({
+      where: { users: { id: userId } },
+    });
+
+    if (!company) {
+      throw new NotFoundException('Company not found for this user');
+    }
+
+    const competitor = await this.competitorRepo.findOne({
+      where: { id: competitorId, company: { id: company.id } },
+    });
+
+    if (!competitor) {
+      throw new NotFoundException('Competitor not found');
+    }
+
+    await this.competitorRepo.remove(competitor);
+    return { deleted: true, competitorId };
   }
 }
