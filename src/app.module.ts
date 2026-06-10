@@ -10,6 +10,8 @@ import { SeederModule } from './seeder/seeder.module';
 import { User } from './entities/user.entity';
 import { Company } from './entities/company.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
+import { Conversation } from './entities/conversation.entity';
+import { ConversationsModule } from './conversations/conversations.module';
 
 @Module({
   imports: [
@@ -20,7 +22,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
       username: process.env.DB_USER || 'rflow',
       password: process.env.DB_PASS || 'rflow_pass',
       database: process.env.DB_NAME || 'rflow_db',
-      entities: [User, Company, RefreshToken],
+      entities: [User, Company, RefreshToken, Conversation],
       synchronize: true,
     }),
     CacheModule.register({
@@ -33,6 +35,7 @@ import { RefreshToken } from './entities/refresh-token.entity';
     AuthModule,
     UsersModule,
     SeederModule,
+    ConversationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

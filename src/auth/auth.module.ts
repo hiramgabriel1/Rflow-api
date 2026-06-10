@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Global, Module } from '@nestjs/common';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -9,6 +9,7 @@ import { User } from '../entities/user.entity';
 import { RefreshToken } from '../entities/refresh-token.entity';
 import { Company } from '../entities/company.entity';
 
+@Global()
 @Module({
   imports: [
     PassportModule,
@@ -20,6 +21,6 @@ import { Company } from '../entities/company.entity';
   ],
   controllers: [AuthController],
   providers: [JwtStrategy, AuthService],
-  exports: [JwtModule],
+  exports: [JwtModule, JwtStrategy],
 })
 export class AuthModule {}

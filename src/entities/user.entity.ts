@@ -1,6 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, OneToMany, OneToOne } from 'typeorm';
 import { Company } from './company.entity';
 import { RefreshToken } from './refresh-token.entity';
+import { Conversation } from './conversation.entity';
 
 @Entity()
 export class User {
@@ -18,6 +19,9 @@ export class User {
 
   @OneToMany(() => RefreshToken, (rt) => rt.user)
   refreshTokens: RefreshToken[];
+
+  @OneToOne(() => Conversation, (conversation) => conversation.user, { cascade: true })
+  conversation: Conversation;
 
   @CreateDateColumn()
   createdAt: Date;
