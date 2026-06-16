@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { User } from './user.entity';
 import { CompetitorCompany } from './competitor-company.entity';
+import { SocialLead } from './social-lead.entity';
 
 @Entity()
 export class Company {
@@ -27,6 +28,9 @@ export class Company {
 
   @OneToMany(() => CompetitorCompany, (competitor) => competitor.company, { cascade: true })
   competitors: CompetitorCompany[];
+
+  @OneToMany(() => SocialLead, (lead) => lead.company, { cascade: true })
+  socialLeads: SocialLead[];
 
   @CreateDateColumn()
   createdAt: Date;

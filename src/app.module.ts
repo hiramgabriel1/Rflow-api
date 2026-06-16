@@ -12,8 +12,10 @@ import { Company } from './entities/company.entity';
 import { RefreshToken } from './entities/refresh-token.entity';
 import { Conversation } from './entities/conversation.entity';
 import { CompetitorCompany } from './entities/competitor-company.entity';
+import { SocialLead } from './entities/social-lead.entity';
 import { ConversationsModule } from './conversations/conversations.module';
 import { CompanyContextModule } from './company-context/company-context.module';
+import { SocialScrapingModule } from './social-scraping/social-scraping.module';
 
 @Module({
   imports: [
@@ -24,7 +26,7 @@ import { CompanyContextModule } from './company-context/company-context.module';
       username: process.env.DB_USER || 'rflow',
       password: process.env.DB_PASS || 'rflow_pass',
       database: process.env.DB_NAME || 'rflow_db',
-      entities: [User, Company, RefreshToken, Conversation, CompetitorCompany],
+      entities: [User, Company, RefreshToken, Conversation, CompetitorCompany, SocialLead],
       synchronize: true,
     }),
     CacheModule.register({
@@ -39,6 +41,7 @@ import { CompanyContextModule } from './company-context/company-context.module';
     SeederModule,
     ConversationsModule,
     CompanyContextModule,
+    SocialScrapingModule,
   ],
   controllers: [AppController],
   providers: [AppService],
